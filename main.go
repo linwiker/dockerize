@@ -192,7 +192,7 @@ Arguments:
   command - command to be executed
   `)
 
-	println(`Examples:
+	println(`Examples1:
 `)
 	println(`   Generate /etc/nginx/nginx.conf using nginx.tmpl as a template, tail /var/log/nginx/access.log
    and /var/log/nginx/error.log, waiting for a website to become available on port 8000 and start nginx.`)
@@ -202,6 +202,13 @@ Arguments:
              -stderr /var/log/nginx/error.log \
              -wait tcp://web:8000 nginx
 	`)
+
+	println(`Examples2:
+	`)
+	println(`
+	   export QTT_DEP_ADDRS="tcp://127.0.0.1:8090;tcp://127.0.0.1:8080"
+	   dockerize nginx
+		`)
 
 	println(`For more information, see https://github.com/jwilder/dockerize`)
 }
@@ -238,6 +245,15 @@ func main() {
 		delims = strings.Split(delimsFlag, ":")
 		if len(delims) != 2 {
 			log.Fatalf("bad delimiters argument: %s. expected \"left:right\"", delimsFlag)
+		}
+	}
+	addres := os.Getenv("QTT_DEP_ADDRS")
+	if addres != "" {
+		addrflags := strings.Split(addres, ";")
+		for _, value := range addrflags {
+			if value != "" {
+				waitFlag = append(waitFlag, strings.TrimSpace(value))
+			}
 		}
 	}
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"opstools/dockerize/reaper"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -9,11 +11,12 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 )
 
 func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...string) {
 	defer wg.Done()
-
+	reaper.Set()
 	process := exec.Command(cmd, args...)
 	process.Stdin = os.Stdin
 	process.Stdout = os.Stdout
@@ -27,19 +30,35 @@ func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...
 
 	// Setup signaling
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(sigs, unix.SIGHUP, unix.SIGINT, unix.SIGTERM, unix.SIGKILL, unix.SIGCHLD, unix.SIGPIPE)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-
-		select {
-		case sig := <-sigs:
-			log.Printf("Received signal: %s\n", sig)
-			signalProcessWithTimeout(process, sig)
-			cancel()
-		case <-ctx.Done():
-			// exit when context is done
+		for {
+			select {
+			case sig := <-sigs:
+				fmt.Printf("信号:%v\n", sig)
+				switch sig {
+				case unix.SIGCHLD:
+					var status unix.WaitStatus
+					pid, err := unix.Wait4(-1, &status, unix.WNOHANG, nil)
+					if err != nil {
+						log.Printf("Received SIGTERM signal:%s error: %s\n", sig)
+					}
+					log.Printf("Received SIGCHLD: %s; pid %v exit; status: %v\n", sig, pid, status)
+				case unix.SIGTERM, unix.SIGINT, unix.SIGHUP, unix.SIGKILL:
+					log.Printf("Received SIGTERM: %s\n", sig)
+					signalProcessWithTimeout(process, sig)
+					cancel()
+				case unix.SIGPIPE:
+					log.Printf("Received SIGPIPE: %s\n", sig)
+				}
+			case <-ctx.Done():
+				log.Printf("done.\n")
+				return
+				// exit when context is done
+			}
 		}
 	}()
 
