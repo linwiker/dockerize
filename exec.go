@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"opstools/dockerize/reaper"
 	"os"
@@ -38,15 +37,24 @@ func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...
 		for {
 			select {
 			case sig := <-sigs:
-				fmt.Printf("信号:%v\n", sig)
 				switch sig {
 				case unix.SIGCHLD:
 					var status unix.WaitStatus
-					pid, err := unix.Wait4(-1, &status, unix.WNOHANG, nil)
-					if err != nil {
-						log.Printf("Received SIGTERM signal:%s error: %s\n", sig)
+					var rus unix.Rusage
+					flag := unix.WNOHANG
+					for {
+						pid, err := unix.Wait4(-1, &status, flag, &rus)
+						if err != nil {
+							if err == unix.ECHILD {
+								break
+							}
+							log.Printf("Received SIGTERM signal:%s error: %s\n", sig)
+						}
+						if pid <= 0 {
+							break
+						}
+						log.Printf("Received SIGCHLD: %s; pid %v exit; status: %v\n", sig, pid, status)
 					}
-					log.Printf("Received SIGCHLD: %s; pid %v exit; status: %v\n", sig, pid, status)
 				case unix.SIGTERM, unix.SIGINT, unix.SIGHUP, unix.SIGKILL:
 					log.Printf("Received SIGTERM: %s\n", sig)
 					signalProcessWithTimeout(process, sig)
