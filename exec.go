@@ -2,12 +2,13 @@ package main
 
 import (
 	"log"
-	"opstools/dockerize/reaper"
 	"os"
 	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/williammartin/subreaper"
 
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
@@ -15,7 +16,7 @@ import (
 
 func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...string) {
 	defer wg.Done()
-	reaper.Set()
+	subreaper.Set()
 	process := exec.Command(cmd, args...)
 	process.Stdin = os.Stdin
 	process.Stdout = os.Stdout
