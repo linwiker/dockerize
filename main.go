@@ -231,6 +231,7 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
+	buildVersion = "v1.0"
 	if version {
 		fmt.Println(buildVersion)
 		return

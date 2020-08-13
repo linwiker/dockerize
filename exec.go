@@ -33,6 +33,11 @@ func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...
 
 	wg.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("received goroutine panic reason=%v", r)
+			}
+		}()
 		defer wg.Done()
 		for {
 			select {
@@ -48,12 +53,12 @@ func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...
 							if err == unix.ECHILD {
 								break
 							}
-							log.Printf("Received SIGTERM signal:%s error: %s\n", sig)
+							log.Printf("Received SIGCHLD signal: %s error: %s\n", sig)
 						}
 						if pid <= 0 {
 							break
 						}
-						log.Printf("Received SIGCHLD: %s; pid %v exit; status: %v\n", sig, pid, status)
+						log.Printf("Received SIGCHLD signal: %s; pid %v exit; status: %v\n", sig, pid, status)
 					}
 				case unix.SIGTERM, unix.SIGINT, unix.SIGHUP, unix.SIGKILL:
 					log.Printf("Received SIGTERM: %s\n", sig)
