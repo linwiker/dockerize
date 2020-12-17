@@ -55,6 +55,7 @@ var (
 	waitFlag          hostFlagsVar
 	waitRetryInterval time.Duration
 	waitTimeoutFlag   time.Duration
+	stopTimeoutFlag   time.Duration
 	dependencyChan    chan struct{}
 	noOverwriteFlag   bool
 
@@ -226,6 +227,7 @@ func main() {
 	flag.Var(&headersFlag, "wait-http-header", "HTTP headers, colon separated. e.g \"Accept-Encoding: gzip\". Can be passed multiple times")
 	flag.Var(&waitFlag, "wait", "Host (tcp/tcp4/tcp6/http/https/unix/file) to wait for before this container starts. Can be passed multiple times. e.g. tcp://db:5432")
 	flag.DurationVar(&waitTimeoutFlag, "timeout", 10*time.Second, "Host wait timeout")
+	flag.DurationVar(&stopTimeoutFlag, "stoptimeout", 10*time.Second, "stop wait timeout")
 	flag.DurationVar(&waitRetryInterval, "wait-retry-interval", defaultWaitRetryInterval, "Duration to wait before retrying")
 
 	flag.Usage = usage

@@ -15,6 +15,11 @@ import (
 )
 
 func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("received goroutine panic reason=%v", r)
+		}
+	}()
 	defer wg.Done()
 	subreaper.Set()
 	process := exec.Command(cmd, args...)
@@ -84,7 +89,13 @@ func runCmd(ctx context.Context, cancel context.CancelFunc, cmd string, args ...
 	} else {
 		log.Printf("Command exited with error: %s\n", err)
 		// OPTIMIZE: This could be cleaner
-		os.Exit(err.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus())
+		errvalue, ok := err.(*exec.ExitError)
+		if ok {
+			os.Exit(err.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus())
+		} else {
+			log.Printf("error value is: %v\n", errvalue)
+			os.Exit(0)
+		}
 	}
 
 }
@@ -100,7 +111,8 @@ func signalProcessWithTimeout(process *exec.Cmd, sig os.Signal) {
 	select {
 	case <-done:
 		return
-	case <-time.After(10 * time.Second):
+	//case <-time.After(10 * time.Second):
+	case <-time.After(stopTimeoutFlag):
 		log.Println("Killing command due to timeout.")
 		process.Process.Kill()
 	}
